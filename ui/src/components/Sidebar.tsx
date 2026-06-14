@@ -156,7 +156,7 @@ export function Sidebar() {
             );
           })()}
 
-          <SidebarNavItem to="/dashboard" label="Overview" icon={LayoutDashboard} liveCount={liveRunCount} />
+          <SidebarNavItem to="/dashboard" label="Overview" icon={LayoutDashboard} />
           <SidebarNavItem
             to="/inbox"
             label="Inbox"
@@ -175,7 +175,7 @@ export function Sidebar() {
           <SidebarNavItem to="/projects" label="Projects" icon={FolderOpen} />
           <SidebarNavItem to="/issues" label="Tasks" icon={CircleDot} />
           <SidebarNavItem to="/agents/all" label="Workers" icon={Bot} />
-          <SidebarNavItem to="/dashboard/live" label="Live Runs" icon={PlayCircle} liveCount={liveRunCount} />
+          <SidebarNavItem to="/dashboard/live" label="Control Plane" icon={PlayCircle} liveCount={liveRunCount} />
           <SidebarNavItem to="/routines" label="Routines" icon={Repeat} />
           <SidebarNavItem to="/goals" label="Goals" icon={Target} />
         </SidebarSection>
