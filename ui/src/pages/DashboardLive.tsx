@@ -8,9 +8,11 @@ import {
   CheckCircle2,
   Clock3,
   Database,
+  ExternalLink,
   FolderKanban,
   Network,
   RadioTower,
+  RefreshCw,
   ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
@@ -20,6 +22,7 @@ import { EmptyState } from "../components/EmptyState";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useCompany } from "../context/CompanyContext";
 import { healthApi } from "../api/health";
+import { kaliosApi, type KaliServiceState } from "../api/kalios";
 import { agentsApi } from "../api/agents";
 import { projectsApi } from "../api/projects";
 import { issuesApi } from "../api/issues";
@@ -37,18 +40,43 @@ const statusStyle: Record<PlaneStatus, string> = {
   attention: "border-red-500/25 bg-red-500/5 text-red-700 dark:text-red-300",
 };
 
+const serviceIcons: Record<string, typeof Activity> = {
+  hermes: Network,
+  ollama: Bot,
+  qdrant: Database,
+  obsidian: Brain,
+  "open-webui": Activity,
+  docker: Boxes,
+};
+
+function planeStatus(state: KaliServiceState): PlaneStatus {
+  if (state === "online") return "online";
+  if (state === "managed") return "managed";
+  if (state === "disabled") return "planned";
+  return "attention";
+}
+
+function stateLabel(state: KaliServiceState): string {
+  if (state === "online") return "Online";
+  if (state === "managed") return "Managed";
+  if (state === "disabled") return "Disabled";
+  return "Offline";
+}
+
 function ControlPlaneCard({
   icon: Icon,
   title,
   status,
   statusLabel,
   description,
+  publicUrl,
 }: {
   icon: typeof Activity;
   title: string;
   status: PlaneStatus;
   statusLabel: string;
   description: string;
+  publicUrl?: string | null;
 }) {
   return (
     <div className="rounded-lg border border-border bg-card p-4">
@@ -62,6 +90,17 @@ function ControlPlaneCard({
       </div>
       <h3 className="mt-4 text-sm font-semibold">{title}</h3>
       <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+      {publicUrl ? (
+        <a
+          href={publicUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-foreground underline-offset-4 hover:underline"
+        >
+          Open service
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      ) : null}
     </div>
   );
 }
@@ -108,6 +147,13 @@ export function DashboardLive() {
     retry: false,
   });
 
+  const kaliosStatusQuery = useQuery({
+    queryKey: ["kalios2", "status"],
+    queryFn: () => kaliosApi.status(),
+    retry: false,
+    refetchInterval: 15_000,
+  });
+
   const agentsQuery = useQuery({
     queryKey: queryKeys.agents.list(selectedCompanyId!),
     queryFn: () => agentsApi.list(selectedCompanyId!),
@@ -150,7 +196,7 @@ export function DashboardLive() {
     return (
       <EmptyState
         icon={RadioTower}
-        message={companies.length === 0 ? "Create a company to open the KaliOS control plane." : "Select a company to open the KaliOS control plane."}
+        message={companies.length === 0 ? "Create a company to open the KaliOS2 control plane." : "Select a company to open the KaliOS2 control plane."}
       />
     );
   }
@@ -168,19 +214,19 @@ export function DashboardLive() {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                Local-first agentic control plane
+                KaliOS2 Phase 1 · local-first
               </div>
-              <h1 className="mt-4 text-3xl font-semibold tracking-tight">KaliOS Operations</h1>
+              <h1 className="mt-4 text-3xl font-semibold tracking-tight">KaliOS2 Operations</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {selectedCompany?.name ?? "Current company"}: projects, workers, task pressure, live execution, and infrastructure integration in one operational surface.
+                {selectedCompany?.name ?? "Current company"}: projects, workers, task pressure, live execution, and infrastructure health in one operational surface.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
-              <Link to="/company/settings/instance/adapters" className="rounded-md border border-border bg-background px-3 py-2 text-foreground no-underline hover:bg-accent">
+              <Link to="/connections" className="rounded-md border border-border bg-background px-3 py-2 text-foreground no-underline hover:bg-accent">
                 Connections
               </Link>
-              <Link to="/workspaces" className="rounded-md border border-border bg-background px-3 py-2 text-foreground no-underline hover:bg-accent">
-                Runtime
+              <Link to="/project-manager" className="rounded-md border border-border bg-background px-3 py-2 text-foreground no-underline hover:bg-accent">
+                Project Manager
               </Link>
               <Link to="/approvals/pending" className="rounded-md border border-border bg-background px-3 py-2 text-foreground no-underline hover:bg-accent">
                 Approvals
@@ -198,13 +244,27 @@ export function DashboardLive() {
       </section>
 
       <section>
-        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-base font-semibold">Control-plane services</h2>
-            <p className="text-xs text-muted-foreground">Only services with a real health signal are shown as online.</p>
+            <p className="text-xs text-muted-foreground">Health is probed by the server. Credentials and internal tokens never reach the browser.</p>
           </div>
-          <span className="text-xs text-muted-foreground">Paperclip {healthQuery.data?.version ? `v${healthQuery.data.version}` : "version unknown"}</span>
+          <button
+            type="button"
+            onClick={() => void kaliosStatusQuery.refetch()}
+            disabled={kaliosStatusQuery.isFetching}
+            className="inline-flex items-center gap-1.5 self-start rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-50 sm:self-auto"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${kaliosStatusQuery.isFetching ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
         </div>
+
+        {kaliosStatusQuery.error ? (
+          <div className="mb-3 rounded-md border border-red-500/25 bg-red-500/5 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+            KaliOS2 integration API is unavailable: {kaliosStatusQuery.error.message}
+          </div>
+        ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <ControlPlaneCard
@@ -212,42 +272,29 @@ export function DashboardLive() {
             title="Paperclip core"
             status={paperclipOnline ? "online" : "attention"}
             statusLabel={paperclipOnline ? "Online" : "Unavailable"}
-            description={deploymentDetail}
+            description={`${deploymentDetail}${healthQuery.data?.version ? ` · v${healthQuery.data.version}` : ""}`}
           />
-          <ControlPlaneCard
-            icon={Network}
-            title="Hermes gateway"
-            status="planned"
-            statusLabel="Not connected"
-            description="The privileged Hermes adapter and health endpoint are the next integration boundary. No Docker or secret access is exposed to the browser."
-          />
-          <ControlPlaneCard
-            icon={Boxes}
-            title="Docker runtime"
-            status="managed"
-            statusLabel="Via Hermes"
-            description="Container lifecycle will be normalized through Hermes instead of giving the React application direct Docker socket access."
-          />
-          <ControlPlaneCard
-            icon={Brain}
-            title="KALI Brain"
-            status="planned"
-            statusLabel="Not connected"
-            description="Obsidian-backed project notes, decisions, reports, and graph-memory links will appear here after the knowledge adapter is wired."
-          />
-          <ControlPlaneCard
-            icon={Database}
-            title="Operational data"
-            status={paperclipOnline ? "managed" : "attention"}
-            statusLabel={paperclipOnline ? "API managed" : "Unknown"}
-            description="Project, worker, task, approval, artifact, and cost data remains behind the Paperclip server boundary."
-          />
+          {(kaliosStatusQuery.data?.services ?? []).map((service) => {
+            const Icon = serviceIcons[service.key] ?? Activity;
+            const latency = service.latencyMs === null ? "" : ` · ${service.latencyMs} ms`;
+            return (
+              <ControlPlaneCard
+                key={service.key}
+                icon={Icon}
+                title={service.label}
+                status={planeStatus(service.state)}
+                statusLabel={stateLabel(service.state)}
+                description={`${service.detail}${latency}`}
+                publicUrl={service.publicUrl}
+              />
+            );
+          })}
           <ControlPlaneCard
             icon={ShieldCheck}
             title="Security boundary"
             status="managed"
-            statusLabel="Local first"
-            description="The UI consumes scoped APIs. Provider credentials and future infrastructure mutations remain server-side."
+            statusLabel="Server-side"
+            description="The browser uses scoped APIs. Hermes tokens, model credentials, and Docker authority remain in the server environment."
           />
         </div>
       </section>

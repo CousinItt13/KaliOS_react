@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Paperclip",
-  "short_name": "Paperclip",
-  "description": "AI-powered project management and agent coordination platform",
+  "name": "KaliOS2",
+  "short_name": "KaliOS2",
+  "description": "Local-first Agentic OS control plane powered by Hermes and Paperclip",
   "start_url": "/",
   "scope": "/",
   "display": "browser",
