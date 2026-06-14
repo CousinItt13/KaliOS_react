@@ -30,7 +30,7 @@ services:
       KALIOS2_PROBE_TIMEOUT_MS: ${KALIOS2_PROBE_TIMEOUT_MS:-4000}
     volumes:
       - kalios2-react-data:/paperclip
-      - ./runtime/kalios2:/app/server/ui-dist/kalios-status:ro
+      - ./runtime/kalios2:/app/ui/dist/kalios-status:ro
     networks:
       - kalios2
     healthcheck:
