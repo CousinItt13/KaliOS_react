@@ -1,3 +1,0 @@
-@echo off
-cd /d "%~dp0\.."
-powershell.exe -NoLogo -NoProfile -File ".\scripts\kalios2\setup-auto.ps1"
