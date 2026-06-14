@@ -4,6 +4,7 @@ import { AGENT_ICON_NAMES } from "@paperclipai/shared";
 import { forbidden } from "../errors.js";
 import { listServerAdapters } from "../adapters/index.js";
 import { agentService } from "../services/agents.js";
+import { kaliosRoutes } from "./kalios.js";
 
 function hasCreatePermission(agent: { role: string; permissions: Record<string, unknown> | null | undefined }) {
   if (!agent.permissions || typeof agent.permissions !== "object") return false;
@@ -13,6 +14,8 @@ function hasCreatePermission(agent: { role: string; permissions: Record<string, 
 export function llmRoutes(db: Db) {
   const router = Router();
   const agentsSvc = agentService(db);
+
+  router.use(kaliosRoutes());
 
   async function assertCanRead(req: Request) {
     if (req.actor.type === "board") return;

@@ -21,7 +21,6 @@ import {
   Bot,
   ShieldCheck,
   PlayCircle,
-  MonitorCog,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink } from "@/lib/router";
@@ -64,7 +63,6 @@ export function Sidebar() {
 
   const liveRunCount = liveRuns?.length ?? 0;
   const showWorkspacesLink = experimentalSettings?.enableIsolatedWorkspaces === true;
-  const conferenceRoomChatEnabled = experimentalSettings?.enableConferenceRoomChat === true;
 
   const pluginContext = {
     companyId: selectedCompanyId,
@@ -122,10 +120,10 @@ export function Sidebar() {
       {!rail ? (
         <div className="mx-3 mb-2 rounded-md border border-border bg-muted/35 px-3 py-2">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold tracking-[0.18em] text-foreground">KALI OS</span>
+            <span className="text-[11px] font-semibold tracking-[0.18em] text-foreground">KALI OS 2</span>
             <span className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Hermes control plane
+              Phase 1
             </span>
           </div>
         </div>
@@ -166,9 +164,7 @@ export function Sidebar() {
             badgeTone={inboxBadge.failedRuns > 0 ? "danger" : "default"}
             alert={inboxBadge.failedRuns > 0}
           />
-          {conferenceRoomChatEnabled ? (
-            <SidebarNavItem to="/board-chat" label="Project Manager" icon={MessagesSquare} />
-          ) : null}
+          <SidebarNavItem to="/project-manager" label="Project Manager" icon={MessagesSquare} />
         </div>
 
         <SidebarSection label="Operate">
@@ -184,13 +180,12 @@ export function Sidebar() {
         <SidebarAgents streamlined />
 
         <SidebarSection label="Knowledge">
-          <SidebarNavItem to="/artifacts" label="KALI Brain" icon={Package} />
+          <SidebarNavItem to="/knowledge" label="KALI Brain" icon={Package} />
         </SidebarSection>
 
         <SidebarSection label="System">
-          <SidebarNavItem to="/system" label="System" icon={MonitorCog} />
-          <SidebarNavItem to="/company/settings/instance/adapters" label="Connections" icon={Boxes} />
-          <SidebarNavItem to="/workspaces" label="Runtime" icon={GitBranch} />
+          <SidebarNavItem to="/connections" label="Connections" icon={Boxes} />
+          <SidebarNavItem to="/runtime" label="Runtime" icon={GitBranch} />
           <SidebarNavItem to="/approvals/pending" label="Approvals" icon={ShieldCheck} />
           <SidebarNavItem to="/org" label="Teams" icon={Network} />
           <SidebarNavItem to="/skills" label="Skills" icon={Boxes} />
