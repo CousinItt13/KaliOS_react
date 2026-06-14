@@ -43,11 +43,11 @@ function Configure-Hermes {
 function Invoke-SystemCheck {
     param([switch]$Quiet)
     $status = New-Status -Mode "check" -Script "CHECK-KALIOS2.bat" -Steps @()
-    $checks = @(); $failed = $false
+    $checks = [System.Collections.Generic.List[object]]::new()
     function Add-Result([string]$key, [string]$label, [bool]$ok, [string]$detail) {
-        $script:checks += @{ key = $key; label = $label; state = $(if ($ok) { "success" } else { "failed" }); detail = $detail }
-        if (-not $ok) { $script:failed = $true }
+        $checks.Add(@{ key = $key; label = $label; state = $(if ($ok) { "success" } else { "failed" }); detail = $detail })
     }
+
     $dockerOk = Test-DockerReady
     Add-Result "docker" "Docker daemon" $dockerOk $(if ($dockerOk) { "Docker is available." } else { "Docker Desktop is unavailable." })
     if ($dockerOk) {
@@ -59,10 +59,12 @@ function Invoke-SystemCheck {
             Add-Result "container-$($container.name)" $container.name $ok $detail
         }
     }
+
     $api = Test-Url "http://127.0.0.1:3100/api/health"
     Add-Result "react-api" "KaliOS React API" $api.ok $api.detail
     $board = Test-Url "http://127.0.0.1:3100/kalios-setup.html"
     Add-Result "board" "Setup board" $board.ok $board.detail
+
     try {
         $integrated = Invoke-RestMethod -Uri "http://127.0.0.1:3100/api/health/kalios/status" -TimeoutSec 8
         foreach ($service in $integrated.services) {
@@ -70,7 +72,9 @@ function Invoke-SystemCheck {
             Add-Result "service-$($service.key)" $service.label $ok "$($service.state): $($service.detail)"
         }
     } catch { Add-Result "integrated" "Integrated service status" $false $_.Exception.Message }
-    $status.checks = $checks
+
+    $failed = @($checks | Where-Object { $_.state -eq "failed" }).Count -gt 0
+    $status.checks = @($checks)
     if ($failed) { Finish-Status $status "failed" "One or more checks failed." } else { Finish-Status $status "success" "All required checks passed." }
     Save-Status $ReactRoot $status
     if (-not $Quiet) {
