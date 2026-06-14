@@ -7,6 +7,9 @@ import { OnboardingWizardVariant } from "./components/OnboardingWizardVariant";
 import { CloudAccessGate } from "./components/CloudAccessGate";
 import { Dashboard } from "./pages/Dashboard";
 import { DashboardLive } from "./pages/DashboardLive";
+import { KaliProjectManager } from "./pages/KaliProjectManager";
+import { KaliConnections } from "./pages/KaliConnections";
+import { KaliBrain } from "./pages/KaliBrain";
 import { Companies } from "./pages/Companies";
 import { Agents } from "./pages/Agents";
 import { AgentDetail } from "./pages/AgentDetail";
@@ -76,6 +79,10 @@ function boardRoutes() {
       <Route index element={<Navigate to="dashboard" replace />} />
       <Route path="dashboard" element={<Dashboard />} />
       <Route path="dashboard/live" element={<DashboardLive />} />
+      <Route path="connections" element={<KaliConnections />} />
+      <Route path="project-manager" element={<KaliProjectManager />} />
+      <Route path="knowledge" element={<KaliBrain />} />
+      <Route path="runtime" element={<Navigate to="../workspaces" replace />} />
       <Route path="onboarding" element={<OnboardingRoutePage />} />
       <Route path="companies" element={<Companies />} />
       <Route path="company/settings" element={<CompanySettings />} />
@@ -372,6 +379,10 @@ export function App() {
           <Route path="routines" element={<UnprefixedBoardRedirect />} />
           <Route path="routines/:routineId" element={<UnprefixedBoardRedirect />} />
           <Route path="artifacts" element={<UnprefixedBoardRedirect />} />
+          <Route path="connections" element={<UnprefixedBoardRedirect />} />
+          <Route path="project-manager" element={<UnprefixedBoardRedirect />} />
+          <Route path="knowledge" element={<UnprefixedBoardRedirect />} />
+          <Route path="runtime" element={<UnprefixedBoardRedirect />} />
           <Route path="u/:userSlug" element={<UnprefixedBoardRedirect />} />
           <Route path="skills/*" element={<UnprefixedBoardRedirect />} />
           <Route path="settings" element={<LegacySettingsRedirect />} />
