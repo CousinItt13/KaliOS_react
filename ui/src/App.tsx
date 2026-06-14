@@ -61,6 +61,7 @@ import { CliAuthPage } from "./pages/CliAuth";
 import { InviteLandingPage } from "./pages/InviteLanding";
 import { JoinRequestQueue } from "./pages/JoinRequestQueue";
 import { NotFoundPage } from "./pages/NotFound";
+import { System } from "./pages/System";
 import { useCompany } from "./context/CompanyContext";
 import { useDialogActions, useDialogState } from "./context/DialogContext";
 import { loadLastInboxTab } from "./lib/inbox";
@@ -76,6 +77,11 @@ function boardRoutes() {
       <Route index element={<Navigate to="dashboard" replace />} />
       <Route path="dashboard" element={<Dashboard />} />
       <Route path="dashboard/live" element={<DashboardLive />} />
+      <Route path="runs" element={<Navigate to="/dashboard/live" replace />} />
+      <Route path="knowledge" element={<Navigate to="/artifacts" replace />} />
+      <Route path="connections" element={<Navigate to="/company/settings/instance/adapters" replace />} />
+      <Route path="runtime" element={<Navigate to="/workspaces" replace />} />
+      <Route path="system" element={<System />} />
       <Route path="onboarding" element={<OnboardingRoutePage />} />
       <Route path="companies" element={<Companies />} />
       <Route path="company/settings" element={<CompanySettings />} />

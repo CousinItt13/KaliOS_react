@@ -21,6 +21,7 @@ import {
   Bot,
   ShieldCheck,
   PlayCircle,
+  MonitorCog,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink } from "@/lib/router";
@@ -187,6 +188,7 @@ export function Sidebar() {
         </SidebarSection>
 
         <SidebarSection label="System">
+          <SidebarNavItem to="/system" label="System" icon={MonitorCog} />
           <SidebarNavItem to="/company/settings/instance/adapters" label="Connections" icon={Boxes} />
           <SidebarNavItem to="/workspaces" label="Runtime" icon={GitBranch} />
           <SidebarNavItem to="/approvals/pending" label="Approvals" icon={ShieldCheck} />
