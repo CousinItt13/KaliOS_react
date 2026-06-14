@@ -1,0 +1,50 @@
+name: kalios2-react
+
+services:
+  kalios-react:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kalios2-react
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${KALIOS2_REACT_PORT:-3100}:3100"
+    environment:
+      TZ: ${TZ:-Europe/Vienna}
+      HOST: 0.0.0.0
+      PORT: "3100"
+      SERVE_UI: "true"
+      PAPERCLIP_DEPLOYMENT_MODE: local_trusted
+      PAPERCLIP_DEPLOYMENT_EXPOSURE: private
+      PAPERCLIP_SECRETS_STRICT_MODE: "true"
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}
+      KALIOS2_HERMES_URL: ${KALIOS2_HERMES_URL:-http://kalios2-hermes:8642}
+      KALIOS2_HERMES_TOKEN: ${KALIOS2_HERMES_TOKEN:?Set KALIOS2_HERMES_TOKEN to the KaliOS2 HERMES_API_KEY}
+      KALIOS2_HERMES_MODEL: ${KALIOS2_HERMES_MODEL:-hermes}
+      KALIOS2_HERMES_PUBLIC_URL: ${KALIOS2_HERMES_PUBLIC_URL:-http://127.0.0.1:9119}
+      KALIOS2_OLLAMA_URL: ${KALIOS2_OLLAMA_URL:-http://kalios2-ollama:11434}
+      KALIOS2_OLLAMA_PUBLIC_URL: ${KALIOS2_OLLAMA_PUBLIC_URL:-http://127.0.0.1:11434}
+      KALIOS2_OPENWEBUI_URL: ${KALIOS2_OPENWEBUI_URL:-http://kalios2-webui:8080}
+      KALIOS2_OPENWEBUI_PUBLIC_URL: ${KALIOS2_OPENWEBUI_PUBLIC_URL:-http://127.0.0.1:3000}
+      KALIOS2_QDRANT_URL: ${KALIOS2_QDRANT_URL:-disabled}
+      KALIOS2_OBSIDIAN_URL: ${KALIOS2_OBSIDIAN_URL:-disabled}
+      KALIOS2_PROBE_TIMEOUT_MS: ${KALIOS2_PROBE_TIMEOUT_MS:-4000}
+    volumes:
+      - kalios2-react-data:/paperclip
+    networks:
+      - kalios2
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3100/api/health >/dev/null || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+
+networks:
+  kalios2:
+    external: true
+    name: kalios2-net
+
+volumes:
+  kalios2-react-data:
+    name: kalios2-react-data
