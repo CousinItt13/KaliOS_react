@@ -1,0 +1,4 @@
+@echo off
+cd /d "%~dp0"
+set "KALIOS_ACTION=Stop"
+powershell.exe -NoLogo -NoProfile -File ".\scripts\kalios2\kalios2.ps1" -Action "%KALIOS_ACTION%"
