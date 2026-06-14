@@ -1,0 +1,168 @@
+param(
+    [ValidateSet("Auto", "Manual", "Start", "Stop", "Check", "OpenBoard")][string]$Action = "Auto",
+    [string]$KaliOS2Root,
+    [switch]$SkipBuild,
+    [switch]$SkipOpenBoard
+)
+
+. (Join-Path $PSScriptRoot "common.ps1")
+$ReactRoot = Get-ReactRoot
+$ReactCompose = Join-Path $ReactRoot "docker-compose.kalios2.yml"
+
+function Resolve-Core {
+    $root = Find-CoreRoot -RequestedRoot $KaliOS2Root -ReactRoot $ReactRoot
+    if (-not $root) { throw "KaliOS2 core was not found. Place it beside KaliOS_react, set KALIOS2_ROOT, or pass -KaliOS2Root." }
+    return $root
+}
+
+function Configure-Hermes {
+    param([string]$CoreRoot)
+    $coreEnv = Ensure-EnvFile -Root $CoreRoot
+    $reactEnv = Ensure-EnvFile -Root $ReactRoot
+    $hermesKey = Get-EnvValue -Path $coreEnv -Name "HERMES_API_KEY"
+    if (-not $hermesKey -or $hermesKey -match "CHANGE_ME|replace|example") {
+        $hermesKey = New-RandomValue
+        Set-EnvValue -Path $coreEnv -Name "HERMES_API_KEY" -Value $hermesKey
+    }
+    $authSecret = Get-EnvValue -Path $reactEnv -Name "BETTER_AUTH_SECRET"
+    if (-not $authSecret -or $authSecret -match "CHANGE_ME|replace|paperclip-dev-secret") {
+        Set-EnvValue -Path $reactEnv -Name "BETTER_AUTH_SECRET" -Value (New-RandomValue)
+    }
+    Set-EnvValue $reactEnv "KALIOS2_HERMES_TOKEN" $hermesKey
+    Set-EnvValue $reactEnv "KALIOS2_HERMES_URL" "http://kalios2-hermes:8642"
+    Set-EnvValue $reactEnv "KALIOS2_HERMES_MODEL" "hermes"
+    Set-EnvValue $reactEnv "KALIOS2_HERMES_PUBLIC_URL" "http://127.0.0.1:9119"
+    Set-EnvValue $reactEnv "KALIOS2_OLLAMA_URL" "http://kalios2-ollama:11434"
+    Set-EnvValue $reactEnv "KALIOS2_OLLAMA_PUBLIC_URL" "http://127.0.0.1:11434"
+    Set-EnvValue $reactEnv "KALIOS2_OPENWEBUI_URL" "http://kalios2-webui:8080"
+    Set-EnvValue $reactEnv "KALIOS2_OPENWEBUI_PUBLIC_URL" "http://127.0.0.1:3000"
+    Set-EnvValue $reactEnv "KALIOS2_QDRANT_URL" "disabled"
+    Set-EnvValue $reactEnv "KALIOS2_OBSIDIAN_URL" "disabled"
+}
+
+function Invoke-SystemCheck {
+    param([switch]$Quiet)
+    $status = New-Status -Mode "check" -Script "CHECK-KALIOS2.bat" -Steps @()
+    $checks = @(); $failed = $false
+    function Add-Result([string]$key, [string]$label, [bool]$ok, [string]$detail) {
+        $script:checks += @{ key = $key; label = $label; state = $(if ($ok) { "success" } else { "failed" }); detail = $detail }
+        if (-not $ok) { $script:failed = $true }
+    }
+    $dockerOk = Test-DockerReady
+    Add-Result "docker" "Docker daemon" $dockerOk $(if ($dockerOk) { "Docker is available." } else { "Docker Desktop is unavailable." })
+    if ($dockerOk) {
+        & docker network inspect kalios2-net *> $null
+        Add-Result "network" "Shared network" ($LASTEXITCODE -eq 0) $(if ($LASTEXITCODE -eq 0) { "kalios2-net exists." } else { "kalios2-net is missing." })
+        foreach ($container in @(Get-ContainerStatus)) {
+            $ok = $container.state -eq "running" -and ($null -eq $container.health -or $container.health -in @("healthy", "starting"))
+            $detail = "state=$($container.state)" + $(if ($container.health) { ", health=$($container.health)" } else { "" })
+            Add-Result "container-$($container.name)" $container.name $ok $detail
+        }
+    }
+    $api = Test-Url "http://127.0.0.1:3100/api/health"
+    Add-Result "react-api" "KaliOS React API" $api.ok $api.detail
+    $board = Test-Url "http://127.0.0.1:3100/kalios-setup.html"
+    Add-Result "board" "Setup board" $board.ok $board.detail
+    try {
+        $integrated = Invoke-RestMethod -Uri "http://127.0.0.1:3100/api/health/kalios/status" -TimeoutSec 8
+        foreach ($service in $integrated.services) {
+            $ok = if ($service.key -in @("hermes", "ollama", "open-webui")) { $service.state -in @("online", "managed") } else { $service.state -in @("online", "managed", "disabled") }
+            Add-Result "service-$($service.key)" $service.label $ok "$($service.state): $($service.detail)"
+        }
+    } catch { Add-Result "integrated" "Integrated service status" $false $_.Exception.Message }
+    $status.checks = $checks
+    if ($failed) { Finish-Status $status "failed" "One or more checks failed." } else { Finish-Status $status "success" "All required checks passed." }
+    Save-Status $ReactRoot $status
+    if (-not $Quiet) {
+        foreach ($item in $checks) { Write-Host ("[{0}] {1} - {2}" -f $(if ($item.state -eq "success") { "OK" } else { "FAIL" }), $item.label, $item.detail) }
+    }
+    return (-not $failed)
+}
+
+function Invoke-Setup {
+    param([switch]$Interactive)
+    $steps = @(
+        (New-Step "preflight" "Check Docker"),
+        (New-Step "core" "Locate KaliOS2 core"),
+        (New-Step "config" "Create Hermes and React configuration"),
+        (New-Step "network" "Create shared Docker network"),
+        (New-Step "core-start" "Start Hermes, Ollama, and Open WebUI"),
+        (New-Step "react-start" "Start KaliOS React"),
+        (New-Step "verify" "Run system checks"),
+        (New-Step "board" "Open setup board")
+    )
+    $scriptName = if ($Interactive) { "SETUP-KALIOS2-MANUAL.bat" } else { "SETUP-KALIOS2-AUTO.bat" }
+    $status = New-Status -Mode $(if ($Interactive) { "manual" } else { "automatic" }) -Script $scriptName -Steps $steps
+    Save-Status $ReactRoot $status
+    try {
+        Confirm-ManualStep $Interactive "Check Docker"
+        Set-StepState $status "preflight" "running"; Save-Status $ReactRoot $status
+        if (-not (Test-DockerReady)) { throw "Docker Desktop is not running." }
+        Set-StepState $status "preflight" "success" "Docker is ready."
+
+        Confirm-ManualStep $Interactive "Locate KaliOS2 core"
+        Set-StepState $status "core" "running"; Save-Status $ReactRoot $status
+        $coreRoot = Resolve-Core
+        $coreCompose = Get-ComposeFile $coreRoot
+        Set-StepState $status "core" "success" $coreRoot
+
+        Confirm-ManualStep $Interactive "Create Hermes and React configuration"
+        Set-StepState $status "config" "running"; Save-Status $ReactRoot $status
+        Configure-Hermes $coreRoot
+        Set-StepState $status "config" "success" "Hermes key created or reused; React token synchronized."
+
+        Confirm-ManualStep $Interactive "Create shared Docker network"
+        Set-StepState $status "network" "running"; Save-Status $ReactRoot $status
+        Ensure-ExternalNetwork
+        Set-StepState $status "network" "success" "kalios2-net is available."
+
+        Confirm-ManualStep $Interactive "Start KaliOS2 core"
+        Set-StepState $status "core-start" "running"; Save-Status $ReactRoot $status
+        $coreArgs = @("up", "-d"); if (-not $SkipBuild) { $coreArgs += "--build" }
+        Invoke-Compose $coreRoot $coreCompose $coreArgs
+        Connect-CoreContainers
+        Set-StepState $status "core-start" "success" "Core services started."
+
+        Confirm-ManualStep $Interactive "Start KaliOS React"
+        Set-StepState $status "react-start" "running"; Save-Status $ReactRoot $status
+        $reactArgs = @("up", "-d"); if (-not $SkipBuild) { $reactArgs += "--build" }
+        Invoke-Compose $ReactRoot $ReactCompose $reactArgs
+        Set-StepState $status "react-start" "success" "KaliOS React started."
+
+        Set-StepState $status "verify" "running"; Save-Status $ReactRoot $status
+        Start-Sleep -Seconds 5
+        if (-not (Invoke-SystemCheck -Quiet)) { throw "System checks failed." }
+        Set-StepState $status "verify" "success" "All required checks passed."
+        Set-StepState $status "board" $(if ($SkipOpenBoard) { "skipped" } else { "success" })
+        Finish-Status $status "success" "KaliOS2 Phase 1 setup completed."
+        Save-Status $ReactRoot $status
+        if (-not $SkipOpenBoard) { Start-Process "http://127.0.0.1:3100/kalios-setup.html" }
+    } catch {
+        $active = $status.steps | Where-Object { $_.state -eq "running" } | Select-Object -First 1
+        if ($active) { Set-StepState $status $active.key "failed" $_.Exception.Message }
+        Finish-Status $status "failed" $_.Exception.Message
+        Save-Status $ReactRoot $status
+        throw
+    }
+}
+
+switch ($Action) {
+    "Auto" { Invoke-Setup }
+    "Manual" { Invoke-Setup -Interactive }
+    "Start" {
+        if (-not (Test-DockerReady)) { throw "Docker Desktop is not running." }
+        $coreRoot = Resolve-Core; Ensure-ExternalNetwork
+        $args = @("up", "-d"); if (-not $SkipBuild) { $args += "--build" }
+        Invoke-Compose $coreRoot (Get-ComposeFile $coreRoot) $args; Connect-CoreContainers
+        Invoke-Compose $ReactRoot $ReactCompose $args
+    }
+    "Stop" {
+        if (-not (Test-DockerReady)) { throw "Docker Desktop is not running." }
+        Invoke-Compose $ReactRoot $ReactCompose @("stop")
+        $coreRoot = Find-CoreRoot $KaliOS2Root $ReactRoot
+        if ($coreRoot) { Invoke-Compose $coreRoot (Get-ComposeFile $coreRoot) @("stop") }
+        $status = New-Status "stop" "STOP-KALIOS2.bat" @(); Finish-Status $status "stopped" "Services stopped; data preserved."; Save-Status $ReactRoot $status
+    }
+    "Check" { if (-not (Invoke-SystemCheck)) { exit 1 } }
+    "OpenBoard" { Start-Process "http://127.0.0.1:3100/kalios-setup.html" }
+}
