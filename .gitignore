@@ -16,6 +16,17 @@ data/
 tmp-*
 cli/tmp/
 
+# Materialized KaliOS2 setup files and runtime status
+/SETUP-KALIOS2-AUTO.bat
+/SETUP-KALIOS2-MANUAL.bat
+/START-KALIOS2.bat
+/STOP-KALIOS2.bat
+/CHECK-KALIOS2.bat
+/OPEN-KALIOS2-SETUP-BOARD.bat
+/scripts/kalios2/common.ps1
+/scripts/kalios2/kalios2.ps1
+/runtime/kalios2/
+
 # Scratch/seed scripts (but not scripts/ dir)
 check-*.mjs
 !.github/scripts/check-*.mjs
