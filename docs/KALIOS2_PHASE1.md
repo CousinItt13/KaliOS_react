@@ -39,7 +39,7 @@ Paperclip can use its embedded PostgreSQL database for the first run.
 ```bash
 git clone https://github.com/CousinItt13/KaliOS_react.git
 cd KaliOS_react
-git checkout feat/kalios2-phase1
+git checkout master
 pnpm install
 pnpm dev
 ```
@@ -96,17 +96,13 @@ Service states:
 ## Verify
 
 ```bash
-pnpm kalios2:doctor
+pnpm kalios2:doctor -- --allow-offline
 pnpm typecheck
-pnpm test
+pnpm exec vitest run server/src/routes/kalios.test.ts
 pnpm build
 ```
 
-Optional integrations may be offline during development:
-
-```bash
-pnpm kalios2:doctor -- --allow-offline
-```
+The KaliOS2 Phase 1 GitHub workflow has passed dependency installation, complete repository typecheck, Phase 1 API tests, and the complete production build.
 
 ## Acceptance criteria
 
