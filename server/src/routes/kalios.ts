@@ -76,38 +76,38 @@ function serviceDefinitions(): ServiceDefinition[] {
     {
       key: "hermes",
       label: "Hermes",
-      baseUrl: envUrl("KALIOS2_HERMES_URL", "http://kali-hermes:8000"),
-      publicUrl: envUrl("KALIOS2_HERMES_PUBLIC_URL"),
+      baseUrl: envUrl("KALIOS2_HERMES_URL", "http://kalios2-hermes:8642"),
+      publicUrl: envUrl("KALIOS2_HERMES_PUBLIC_URL", "http://127.0.0.1:9119"),
       healthPath: envPath("KALIOS2_HERMES_HEALTH_PATH", "/health"),
       authorization: hermesToken ? `Bearer ${hermesToken}` : null,
     },
     {
       key: "ollama",
       label: "Ollama",
-      baseUrl: envUrl("KALIOS2_OLLAMA_URL", "http://kali-ollama:11434"),
-      publicUrl: envUrl("KALIOS2_OLLAMA_PUBLIC_URL"),
+      baseUrl: envUrl("KALIOS2_OLLAMA_URL", "http://kalios2-ollama:11434"),
+      publicUrl: envUrl("KALIOS2_OLLAMA_PUBLIC_URL", "http://127.0.0.1:11434"),
       healthPath: envPath("KALIOS2_OLLAMA_HEALTH_PATH", "/api/tags"),
+    },
+    {
+      key: "open-webui",
+      label: "Open WebUI",
+      baseUrl: envUrl("KALIOS2_OPENWEBUI_URL", "http://kalios2-webui:8080"),
+      publicUrl: envUrl("KALIOS2_OPENWEBUI_PUBLIC_URL", "http://127.0.0.1:3000"),
+      healthPath: envPath("KALIOS2_OPENWEBUI_HEALTH_PATH", "/health"),
     },
     {
       key: "qdrant",
       label: "Qdrant",
-      baseUrl: envUrl("KALIOS2_QDRANT_URL", "http://kali-qdrant:6333"),
+      baseUrl: envUrl("KALIOS2_QDRANT_URL"),
       publicUrl: envUrl("KALIOS2_QDRANT_PUBLIC_URL"),
       healthPath: envPath("KALIOS2_QDRANT_HEALTH_PATH", "/readyz"),
     },
     {
       key: "obsidian",
       label: "KALI Brain",
-      baseUrl: envUrl("KALIOS2_OBSIDIAN_URL", "http://kali-obsidian:3000"),
+      baseUrl: envUrl("KALIOS2_OBSIDIAN_URL"),
       publicUrl: envUrl("KALIOS2_OBSIDIAN_PUBLIC_URL"),
       healthPath: envPath("KALIOS2_OBSIDIAN_HEALTH_PATH", "/"),
-    },
-    {
-      key: "open-webui",
-      label: "Open WebUI",
-      baseUrl: envUrl("KALIOS2_OPENWEBUI_URL", "http://kali-open-webui:8080"),
-      publicUrl: envUrl("KALIOS2_OPENWEBUI_PUBLIC_URL"),
-      healthPath: envPath("KALIOS2_OPENWEBUI_HEALTH_PATH", "/health"),
     },
   ];
 }
@@ -170,6 +170,7 @@ export function kaliosRoutes() {
     assertBoard(req);
     const services = await Promise.all(serviceDefinitions().map(probeService));
     const hermes = services.find((service) => service.key === "hermes");
+    const obsidian = services.find((service) => service.key === "obsidian");
     services.push({
       key: "docker",
       label: "Docker runtime",
@@ -193,8 +194,8 @@ export function kaliosRoutes() {
         workers: true,
         approvals: true,
         budgets: true,
-        projectManager: Boolean(envUrl("KALIOS2_HERMES_URL", "http://kali-hermes:8000")),
-        knowledge: Boolean(envUrl("KALIOS2_OBSIDIAN_URL", "http://kali-obsidian:3000")),
+        projectManager: hermes?.state === "online",
+        knowledge: obsidian?.state === "online",
         dockerMutations: hermes?.state === "online",
       },
     });
@@ -208,7 +209,7 @@ export function kaliosRoutes() {
       return;
     }
 
-    const hermesUrl = envUrl("KALIOS2_HERMES_URL", "http://kali-hermes:8000");
+    const hermesUrl = envUrl("KALIOS2_HERMES_URL", "http://kalios2-hermes:8642");
     if (!hermesUrl) {
       res.status(503).json({ error: "hermes_disabled" });
       return;
