@@ -1,0 +1,44 @@
+:root {
+  --kali-space-1: 0.25rem;
+  --kali-space-2: 0.5rem;
+  --kali-space-3: 0.75rem;
+  --kali-space-4: 1rem;
+  --kali-space-5: 1.25rem;
+  --kali-space-6: 1.5rem;
+  --kali-space-8: 2rem;
+
+  --kali-radius-sm: 0.375rem;
+  --kali-radius-md: 0.625rem;
+  --kali-radius-lg: 0.875rem;
+
+  --kali-control-height-sm: 2rem;
+  --kali-control-height-md: 2.5rem;
+  --kali-control-height-lg: 3rem;
+
+  --kali-sidebar-width: 16rem;
+  --kali-sidebar-rail-width: 3.5rem;
+  --kali-inspector-width: 22rem;
+  --kali-topbar-height: 3.5rem;
+
+  --kali-status-offline: var(--muted-foreground);
+  --kali-status-idle: var(--foreground);
+  --kali-status-running: var(--primary);
+  --kali-status-waiting: var(--warning, #a16207);
+  --kali-status-failed: var(--destructive);
+}
+
+.kali-workspace-shell {
+  display: grid;
+  min-height: 100dvh;
+  grid-template-columns: var(--kali-sidebar-width) minmax(0, 1fr);
+  grid-template-rows: var(--kali-topbar-height) minmax(0, 1fr);
+}
+
+.kali-workspace-shell[data-inspector="open"] {
+  grid-template-columns: var(--kali-sidebar-width) minmax(0, 1fr) var(--kali-inspector-width);
+}
+
+.kali-focus-ring:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
