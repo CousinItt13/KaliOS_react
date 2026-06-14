@@ -150,10 +150,16 @@ function Save-Status {
     $directory = Join-Path $ReactRoot "runtime\kalios2"
     if (-not (Test-Path $directory)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
     $Status.updatedAt = (Get-Date).ToUniversalTime().ToString("o")
-    $Status.dockerRunning = Test-DockerReady
-    $Status.containers = @(Get-ContainerStatus)
-    & docker network inspect kalios2-net *> $null
-    $Status.networkExists = $LASTEXITCODE -eq 0
+    $dockerReady = Test-DockerReady
+    $Status.dockerRunning = $dockerReady
+    if ($dockerReady) {
+        $Status.containers = @(Get-ContainerStatus)
+        & docker network inspect kalios2-net *> $null
+        $Status.networkExists = $LASTEXITCODE -eq 0
+    } else {
+        $Status.containers = @()
+        $Status.networkExists = $false
+    }
     $path = Join-Path $directory "setup-status.json"
     $temp = "$path.tmp"
     $Status | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $temp -Encoding UTF8
