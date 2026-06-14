@@ -8,6 +8,7 @@ import { readPersistedDevServerStatus, toDevServerHealthStatus, writeDevServerRe
 import { logger } from "../middleware/logger.js";
 import { instanceSettingsService } from "../services/instance-settings.js";
 import { serverVersion } from "../version.js";
+import { kaliosRoutes } from "./kalios.js";
 
 function shouldExposeFullHealthDetails(
   actorType: "none" | "board" | "agent" | null | undefined,
@@ -43,6 +44,11 @@ export function healthRoutes(
   },
 ) {
   const router = Router();
+
+  // KaliOS2 Phase 1 control-plane endpoints are grouped below /api/health.
+  // Keeping the integration inside the existing authenticated health router
+  // avoids exposing Hermes credentials or adding a second browser-to-Hermes path.
+  router.use(kaliosRoutes());
 
   router.post("/dev-server/restart", async (req, res) => {
     const actorType = "actor" in req ? req.actor?.type : null;
