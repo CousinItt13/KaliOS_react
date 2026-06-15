@@ -41,6 +41,8 @@ export type KaliChatResponse = {
   usage: unknown;
 };
 
+const KALIOS_API_ROOT = "/api/health/kalios";
+
 async function jsonRequest<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     credentials: "include",
@@ -61,9 +63,9 @@ async function jsonRequest<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const kaliosApi = {
-  status: () => jsonRequest<KaliStatus>("/api/kalios/status"),
+  status: () => jsonRequest<KaliStatus>(`${KALIOS_API_ROOT}/status`),
   chat: (input: { projectId?: string; model?: string; messages: KaliChatMessage[] }) =>
-    jsonRequest<KaliChatResponse>("/api/kalios/hermes/chat", {
+    jsonRequest<KaliChatResponse>(`${KALIOS_API_ROOT}/hermes/chat`, {
       method: "POST",
       body: JSON.stringify(input),
     }),

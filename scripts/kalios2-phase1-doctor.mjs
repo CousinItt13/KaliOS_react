@@ -25,7 +25,7 @@ function line(label, value) {
 
 try {
   const core = await request("/api/health");
-  const phase = await request("/api/kalios/status");
+  const phase = await request("/api/health/kalios/status");
 
   console.log("KaliOS2 Phase 1 doctor\n");
   line("Application", `${core.status}${core.version ? ` v${core.version}` : ""}`);

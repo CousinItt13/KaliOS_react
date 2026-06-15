@@ -1,0 +1,4 @@
+@echo off
+cd /d "%~dp0"
+powershell.exe -NoLogo -NoProfile -File ".\scripts\kalios2\kalios2.ps1" -Action Check
+if errorlevel 1 pause
